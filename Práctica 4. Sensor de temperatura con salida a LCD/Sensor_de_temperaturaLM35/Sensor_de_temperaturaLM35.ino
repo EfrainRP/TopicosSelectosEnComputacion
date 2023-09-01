@@ -15,9 +15,9 @@ void loop() {
   lcd.print("Temperatura");
 
   Temperatura= (500.0*analogRead(4)/1024.0);//Formula para el calculo de la temperatura con LM35
-  lcd.setCursor(0, 1); 
-  lcd.print(Temperatura);
-  lcd.setCursor(5, 1); 
+  lcd.setCursor(0, 1); //Poscionamiento de cursor para registro de datos
+  lcd.print(Temperatura); //Registro en LCD de la temperatura
+  lcd.setCursor(5, 1); //Poscionamiento nueva de cursor
   lcd.print(" C");
   
   delay (3000);
