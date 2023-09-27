@@ -3,120 +3,142 @@
 
 LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
 
-const byte ROWS = 4; // four rows
-const byte COLS = 4; // three columns
-char keys[ROWS][COLS] =
-{
-{'1','2','3','A'},
-{'4','5','6','B'},
-{'7','8','9','C'},
-{'*','0','#','D'}
+const byte ROWS = 4;  // four rows
+const byte COLS = 4;  // three columns
+char keys[ROWS][COLS] = {
+  { '1', '2', '3', 'A' },
+  { '4', '5', '6', 'B' },
+  { '7', '8', '9', 'C' },
+  { '*', '0', '#', 'D' }
 };
-byte rowPins[ROWS] = {4, 5, 6, 7};
-byte colPins[COLS] = {15, 14, 2, 3};
-Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+byte rowPins[ROWS] = { 4, 5, 6, 7 };
+byte colPins[COLS] = { 15, 14, 2, 3 };
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
-char numIN[2]; //Arreglo para introducir numeros del teclado
+char numIN[2];  //Arreglo para introducir numeros del teclado
 int pos = 0;
-bool op1 = true, oper = false;
+bool ready1 = false, oper = false;
 int op, oper1, oper2;
 
-int operando (char key){
-  if((key!='#') && (pos<2)){
-    numIN[pos]=key;
-    pos++;
-  }  
-  if(pos>=2){
-    pos=0;
+void cifras(char key) {   //Fucnion para obtener los valores del teclado a un numero, junto con el de la confirmacion
+  switch (key) {
+    case '0' ... '9':
+      numIN[pos++] = key;
+      if (pos >= 2) {
+        pos = 0;
+      }
+      if (numIN[1]) { //Determina como juntara el arreglo para determinar el numero correcto
+        op = (String(numIN[0]).toInt() * 10) + String(numIN[1]).toInt();
+        numIN[1] = 0;
+      } else {
+        op = String(numIN[0]).toInt();
+      }
+      break;
+    case '#': //Tecla de confimacion con el #
+      if (!ready1) {  //Cuando estemos introduciendo la primera cifra
+        oper1 = op;   //Guardara la primera cifra y se reiniciara sus valores para la sig. cifra
+        limpiar();
+        ready1 = true;
+        pos = 0;
+
+      } else {  //Cuando estemos introduciendo la segunda cifra
+        oper2 = op; //Guardara la primera cifra y se reiniciara sus valores para el sig. estado
+        limpiar();
+        ready1 = false;
+        //Serial.println(oper1);
+        //Serial.println(oper2);
+        if (oper1 >= oper2) { //El valor del operando1 debe ser mayor o igual que el operando2
+          oper = true;
+        }
+        Serial.println(oper);
+      }
+      break;
   }
-  
-  int op = (numIN[1] == ' '? String(numIN[0]).toInt() : (String(numIN[0]).toInt()*10)+String(numIN[1]).toInt());
-  Serial.println(op);
-  return op;
+}
+void limpiar() {//Funcion para limpiar nuestos valores basicas
+  numIN[0] = 0;
+  numIN[1] = 0;
+  op = 0;  //Limpiar resultado para LCD
+  lcd.clear();
+  pos = 0;
 }
 void setup() {
-  lcd.begin (16,2); //Inicializando LCD
-  lcd.clear();//Limpiamos la LCD
-  Serial.begin(9600);
+  lcd.begin(16, 2);  //Inicializando LCD
+  lcd.clear();       //Limpiamos la LCD
+  Serial.begin(9600); 
 }
 
 void loop() {
-  char key = keypad.getKey();
-  if(op1){
-    lcd.setCursor(0,0);
-    lcd.print("Primer Operando: ");
-  }else{
-    lcd.setCursor(0,0);
-    lcd.print("Segundo Operando: ");
-  }
-  switch(key){
-    case '0'...'9':
-      if(pos<2){
-        numIN[pos++]=key;
-      }else {
-        pos = 0;
-      }
-      op = (numIN[1] == ' '? String(numIN[0]).toInt() : (String(numIN[0]).toInt()*10)+String(numIN[1]).toInt());
-      break;
-    case '#':
-      if(op1){
-        numIN[0]=' ';
-        numIN[1]=' ';
-        oper1 = op;
-        op1 =false;
-      }else {
-        numIN[0]=' ';
-        numIN[1]=' ';
-        oper2 = op;
-        oper = true;
-      }
-      break;
-  }
-  //int op1 = operando(key);
-  lcd.setCursor(0,1);
-  lcd.print(op);
-  Serial.print("oper1: ");
-  Serial.println(oper1);
-  Serial.print("oper2: ");
-  Serial.println(oper2);
-  if(oper){
-    int operador=0;
+  char key = keypad.getKey(); //Variable que guarda el valor de teclado
+
+  while (!ready1) { //Ciclo para introducir la primera cifra
     key = keypad.getKey();
-    switch(key){
-    case '0'...'9':
-      if(pos<1){
-        numIN[pos++]=key;
-      }else {
-        pos = 0;
-      }
-      operador = String(numIN[0]).toInt();
-      break;
+    lcd.setCursor(0, 0);
+    lcd.print("Primer Operando: ");
+    cifras(key);
+    if (op) {
+      lcd.setCursor(0, 1);
+      lcd.print(op);
+      lcd.print("  ");
     }
-    int res = 0;
-    float div =0.0;
-    switch(operador){
+  }
+  while (ready1) {  //Ciclo para introducir la segunda cifra
+    key = keypad.getKey();
+    lcd.setCursor(0, 0);
+    lcd.print("Segundo Operando: ");
+    cifras(key);
+    if (op) {
+      lcd.setCursor(0, 1);
+      lcd.print(op);
+      lcd.print("  ");
+    }
+  }
+
+  lcd.clear();
+  int res = 0;
+  while (oper) {  //Ciclo para introducir la operacion a realizar
+    lcd.setCursor(0, 0);
+    lcd.print("    Operacion   ");
+    lcd.setCursor(0, 1);
+    lcd.print(" 1+  2-  3/  4x");
+    key = keypad.getKey();
+    switch (key) {  //Switch para determinar que operacion a realizar
       case '1':
         res = oper1 + oper2;
-        Serial.print("res: ");
-        Serial.println(res);
+        oper = false;
+        lcd.clear();
         break;
-      case '2': 
+      case '2':
         res = oper1 - oper2;
-        Serial.print("res: ");
-        Serial.println(res);
+        oper = false;
+        lcd.clear();
         break;
       case '3':
-        div = oper1 / oper2;
-        Serial.print("res: ");
-        Serial.println(div);
+        res = oper1 / oper2;
+        oper = false;
+        lcd.clear();
         break;
       case '4':
         res = oper1 * oper2;
-        Serial.print("res: ");
-        Serial.println(res);
+        oper = false;
+        lcd.clear();
         break;
     }
-    
+    while (!oper) { //Ciclo para mostrar el resultado de la operacion
+      key = keypad.getKey();
+      lcd.setCursor(0, 0);
+      lcd.print("Resultado:  ");
+      lcd.setCursor(0, 1);
+      lcd.print(res);
+      if (key == '#') { //Tecla de salida del ciclo de resultado
+        oper = true;
+        limpiar();
+      }
+    }
+    if (key == '#') {//Condicion para salir del ciclo de entrada de operaciones
+      oper = false;
+      break;
+    }
   }
-  
+  ready1 = false;
 }
